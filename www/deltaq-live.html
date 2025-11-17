@@ -1,17 +1,77 @@
 <!doctype html>
 <html>
 <head>
+    <title>ΔQ live</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      textarea {font-family: monospace; font-size:14px;}
+    </style>
 </head>
 
 <body>
-    <div>
-        <input type="text" id="expr"/>
-        <label for="expr">Outcome expression</label>
-        <input type="button" id="eval" value="Render"/>
+    <h1>Try ΔQ live online</h1>
+    <div style="display:flex;">
+      <div>
+        <label for="expr">Outcome expression</label><br/>
+        <textarea id="expr" rows="8" cols="50">
+(x .\/. never) .>>. (y ./\. z) .>>. [end]</textarea>
+      </div>
+      <div style="margin-left:10px;"><br>
+        Possible combinations of outcome expressions (<code><em>expr</em></code>):
+        <table>
+          <tr>
+            <td>Parallel, last-to-finish
+            <td><code><em>expr</em> ./\. <em>expr</em></code>
+          <tr>
+            <td>Parallel, first-to-finish:
+            <td><code><em>expr</em> .\/. <em>expr</em></code>
+          <tr>
+            <td>Sequential composition:
+            <td><code><em>expr</em> .>>. <em>expr</em></code>
+          <tr>
+            <td>Probabilistic choice:
+            <td><code>choice <em>p</em> <em>expr</em> <em>expr</em></code>
+          <tr>
+            <td>Always fail:
+            <td><code>never</code>
+          <tr>
+            <td>Observation location:
+            <td><code>[<em>label</em>]</code>
+        </table>
+      </div>
     </div>
-    <div id="out">
+    <div style="display:flex;">
+      <div>
+        <label for="vars">Variable assignments</label><br/>
+        <textarea id="vars" rows="5" cols="50">
+x = uniform 0 1
+y = wait 2
+z = uniform 0 3</textarea>
+      </div>
+      <div style="margin-left:10px; margin-top:20px;">
+        Possible variable assignments:
+        <table>          
+          <tr>
+            <td>Deterministic time delay:
+            <td><code><em>var</em> = wait <em>t<sub>1</sub></em></code>
+          <tr>
+            <td>Uniform distribution on interval:
+            <td><code><em>var</em> = uniform <em>t<sub>1</sub></em> <em>t<sub>2</sub></em></code>
+        </table>
+      </div>
+    </div>
+    <div>
+      <input type="button" id="eval" value="Render"/>
+    </div>
+    <pre id="out-error"></pre>
+    Outcome diagram:
+    <div id="out-diagram">
+      —
+    </div>
+    ΔQ:
+    <div id="out-times">
+      —
     </div>
     <script type="module" src="runtime.js"></script>
 </body>
