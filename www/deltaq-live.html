@@ -4,7 +4,10 @@
     <title>ΔQ live</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
+    <script src="vendor/pdfkit.js"></script>
+    <script src="vendor/blobstream.js"></script>
+    <script src="vendor/svgtopdf.js"></script>
+    <script src="createpdf.js"></script>    <style>
       textarea {font-family: monospace; font-size:14px;}
     </style>
 </head>
@@ -63,6 +66,8 @@ z = uniform 0 3</textarea>
     </div>
     <div>
       <input type="button" id="eval" value="Render"/>
+      <input type="button" id="create-pdf" value="Download diagram (PDF)" onclick="createAndDownloadPDF()" disabled/>
+      <a style="display:none" id="pdf-file" download='outcome-diagram.pdf'></a>
     </div>
     <pre id="out-error"></pre>
     Outcome diagram:

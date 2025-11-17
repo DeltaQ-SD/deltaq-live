@@ -27,6 +27,9 @@ foreign import javascript unsafe "$1.value"
 foreign import javascript unsafe "$1.innerHTML = $2"
   js_element_setInnerHtml :: JSVal -> JSString -> IO ()
 
+foreign import javascript unsafe "$1.disabled = $2"
+  js_element_setDisabled :: JSVal -> Bool -> IO ()
+
 foreign import javascript safe "const r = await fetch($1); return r.text();"
   js_fetch :: JSString -> IO JSString
 
@@ -73,6 +76,9 @@ onEvalButtonClick chartEnv event = do
 
             outDia     <- js_document_getElementById (toJSString "out-diagram")
             js_element_setInnerHtml outDia (toJSString dia)
+
+            button <- js_document_getElementById (toJSString "create-pdf")
+            js_element_setDisabled button False
 
             outTimes   <- js_document_getElementById (toJSString "out-times")
             js_element_setInnerHtml outTimes (toJSString times)
