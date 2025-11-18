@@ -17,6 +17,7 @@ import           Parser
     , parseVariableAssignments
     , parseObservationLocations
     )
+import qualified Parser as Expr
 import qualified Render.Chart           as Chart
 import qualified Render.Diagram         as D
 import           Text.Read (readMaybe)
@@ -32,11 +33,11 @@ type Chart = String
 renderOutcomeExpression
     :: Chart.ChartEnv -> String -> String -> String -> Either Err (Dia, Chart)
 renderOutcomeExpression env expr vars loc = do
-    o <- parseOutcomeExpression expr
+    e <- parseOutcomeExpression expr
     v <- parseVariableAssignments vars
     l <- parseObservationLocations loc
-    let o' = patchObservationLocations l o
-    pure (renderDiagramFromExpr o', renderChartFromExpr env o v)
+    let o = outcomeFromExpr $ patchObservationLocations l e
+    pure (renderDiagramFromExpr o, renderChartFromExpr env o v)
 
 {-----------------------------------------------------------------------------
     Render Expression
@@ -48,21 +49,31 @@ renderDiagramFromExpr =
     . D.scale 55 . renderOutcomeDiagram
 
 -- | Add the given observation locations to the outcome expression.
-patchObservationLocations :: [ObservationLocation] -> O -> O
-patchObservationLocations locs =
-    outcomeFromTerm . everywhere patch . termFromOutcome
+patchObservationLocations :: [ObservationLocation] -> Expr.Expr -> Expr.Expr
+patchObservationLocations locs = Expr.everywhere patch
   where
-    matches name (LocationBefore loc name') = name == name'
-    matches name (LocationAfter  name' loc) = name == name'
+    matches ex (LocationBefore loc ey) = ex == ey
+    matches ex (LocationAfter  ey loc) = ex == ey
 
-    patch (Var name)
-        | Just eloc <- find (matches name) locs =
-            case eloc of
-                LocationAfter  _ loc -> 
-                    Seq [Var name, Loc loc]
-                LocationBefore loc _ ->
-                    Seq [Loc loc, Var name]
-    patch x = x
+    adjust (LocationAfter  _ loc) expr
+        = Expr.Seq expr (Expr.Loc loc)
+    adjust (LocationBefore loc _) expr
+        = Expr.Seq (Expr.Loc loc) expr
+
+    patch expr =
+        foldr adjust expr [l | l <- locs, matches expr l]
+
+outcomeFromExpr :: Expr.Expr -> O
+outcomeFromExpr = from
+  where
+    from Expr.Never = never
+    from (Expr.Var v) = var v
+    from (Expr.Wait t) = wait t
+    from (Expr.Loc s) = loc s
+    from (Expr.Seq x y) = from x .>>. from y
+    from (Expr.FirstToFinish x y) = from x .\/. from y
+    from (Expr.LastToFinish  x y) = from x ./\. from y
+    from (Expr.Choice p x y) = choice p (from x) (from y)
 
 {-----------------------------------------------------------------------------
     Render Chart

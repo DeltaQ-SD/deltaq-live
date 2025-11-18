@@ -1,12 +1,14 @@
 module Parser
     ( ErrParse
+    , Expr (..)
+    , everywhere
     , parseOutcomeExpression
     , parseVariableAssignments
     , ObservationLocation (..)
     , parseObservationLocations
     ) where
 
-import DeltaQ
+import DeltaQ (DQ, uniform, wait)
 
 import Control.Arrow (left)
 import Control.Monad (void)
@@ -44,7 +46,7 @@ import Text.Megaparsec
 ------------------------------------------------------------------------------}
 type ErrParse = String
 
-parseOutcomeExpression :: String -> Either ErrParse O
+parseOutcomeExpression :: String -> Either ErrParse Expr
 parseOutcomeExpression = left show . parse exprFull ""
 
 parseVariableAssignments :: String -> Either ErrParse [(String, DQ)]
@@ -68,8 +70,8 @@ parseObservationLocations =
     Parse observation locations
 ------------------------------------------------------------------------------}
 data ObservationLocation
-    = LocationBefore String String
-    | LocationAfter String String
+    = LocationBefore String Expr
+    | LocationAfter Expr String
 
 observationLocationFull :: Parser ObservationLocation
 observationLocationFull =
@@ -78,11 +80,11 @@ observationLocationFull =
 observationLocation :: Parser ObservationLocation
 observationLocation =
     try (flip LocationBefore
-        <$ symbol "|<--" <*> varName <* symbol "=" <*> stringLiteral
+        <$ symbol "|<--" <*> expr <* symbol "=" <*> stringLiteral
     )
     <|>
     (LocationAfter
-        <$> varName <* symbol "-->|" <* symbol "=" <*> stringLiteral
+        <$> expr <* symbol "-->|" <* symbol "=" <*> stringLiteral
     )
 
 {-----------------------------------------------------------------------------
@@ -111,38 +113,68 @@ assignment = do
 {-----------------------------------------------------------------------------
     Parse expressions
 ------------------------------------------------------------------------------}
-exprFull :: Parser O
+data Expr
+    = Var String
+    | Never
+    | Wait Rational
+    | Loc String
+    | Seq Expr Expr
+    | FirstToFinish Expr Expr
+    | LastToFinish Expr Expr
+    | Choice Rational Expr Expr
+    deriving (Eq, Ord, Show)
+
+-- | Apply a transformation everywhere; bottom-up.
+--
+-- See also [Scrap your boilerplate
+-- ](https://www.microsoft.com/en-us/research/wp-content/uploads/2003/01/hmap.pdf)
+-- .
+everywhere :: (Expr -> Expr) -> Expr -> Expr
+everywhere f = every
+  where
+    every = f . recurse
+
+    recurse a@(Var _) = a
+    recurse a@Never = a
+    recurse a@(Wait _) = a
+    recurse a@(Loc  _) = a
+    recurse (Seq x y) = Seq (every x) (every y)
+    recurse (FirstToFinish x y) = FirstToFinish (every x) (every y)
+    recurse (LastToFinish  x y) = LastToFinish (every x) (every y)
+    recurse (Choice p x y) = Choice p (every x) (every y)
+
+exprFull :: Parser Expr
 exprFull = space *> expr <* eof
 
-expr :: Parser O
+expr :: Parser Expr
 expr = Parser.Expr.makeExprParser atom tableOfOperators <?> "expression"
 
-atom :: Parser O
+atom :: Parser Expr
 atom =
     parens expr
         <|> location
         <|> constants
-        <|> (wait <$ symbol "wait" <*> rational)
-        <|> (choice <$ symbol "choice" <*> rational <*> expr <*> expr)
-        <|> (var <$> varName)
+        <|> (Wait <$ symbol "wait" <*> rational)
+        <|> (Choice <$ symbol "choice" <*> rational <*> expr <*> expr)
+        <|> (Var <$> varName)
         <?> "atom"
 
-constants :: Parser O
-constants = never <$ symbol "never" <?> "never"
+constants :: Parser Expr
+constants = Never <$ symbol "never" <?> "never"
 
-location :: Parser O
-location = loc <$ symbol "[" <*> takeWhileP (Just "loc") (/= ']') <* symbol "]"
+location :: Parser Expr
+location = Loc <$ symbol "[" <*> takeWhileP (Just "loc") (/= ']') <* symbol "]"
 
-tableOfOperators :: [[Parser.Expr.Operator Parser O]]
+tableOfOperators :: [[Parser.Expr.Operator Parser Expr]]
 tableOfOperators =
     [
-        [ binaryR "./\\." (./\.)
+        [ binaryR "./\\." LastToFinish
         ]
     ,
-        [ binaryR ".\\/." (.\/.)
+        [ binaryR ".\\/." FirstToFinish
         ]
     ,
-        [ binaryR ".>>." (.>>.)
+        [ binaryR ".>>." Seq
         ]
     ]
 
