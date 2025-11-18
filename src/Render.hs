@@ -5,13 +5,18 @@ module Render
     ) where
 
 import           Data.Maybe (fromMaybe)
-import           Data.List (group, intersperse, sort)
+import           Data.List (find, group, intersperse, sort)
 import           Data.Set (Set)
 import qualified Data.Set               as Set
 import qualified Data.Text              as Text
 import           DeltaQ
 import qualified Diagrams.Prelude       as D
-import           Parser (parseOutcomeExpression, parseVariableAssignments)
+import           Parser
+    ( ObservationLocation (..)
+    , parseOutcomeExpression
+    , parseVariableAssignments
+    , parseObservationLocations
+    )
 import qualified Render.Chart           as Chart
 import qualified Render.Diagram         as D
 import           Text.Read (readMaybe)
@@ -25,18 +30,43 @@ type Chart = String
 
 -- | Render an outcome expression with variable assignments.
 renderOutcomeExpression
-    :: Chart.ChartEnv -> String -> String -> Either Err (Dia, Chart)
-renderOutcomeExpression env expr vars = do
+    :: Chart.ChartEnv -> String -> String -> String -> Either Err (Dia, Chart)
+renderOutcomeExpression env expr vars loc = do
     o <- parseOutcomeExpression expr
     v <- parseVariableAssignments vars
-    pure (renderDiagramFromExpr o, renderChartFromExpr env o v)
+    l <- parseObservationLocations loc
+    let o' = patchObservationLocations l o
+    pure (renderDiagramFromExpr o', renderChartFromExpr env o v)
 
+{-----------------------------------------------------------------------------
+    Render Expression
+------------------------------------------------------------------------------}
 -- | Render a diagram.
 renderDiagramFromExpr :: O -> String
 renderDiagramFromExpr =
     Text.unpack . D.renderSvg . D.renderDiagram
     . D.scale 55 . renderOutcomeDiagram
 
+-- | Add the given observation locations to the outcome expression.
+patchObservationLocations :: [ObservationLocation] -> O -> O
+patchObservationLocations locs =
+    outcomeFromTerm . everywhere patch . termFromOutcome
+  where
+    matches name (LocationBefore loc name') = name == name'
+    matches name (LocationAfter  name' loc) = name == name'
+
+    patch (Var name)
+        | Just eloc <- find (matches name) locs =
+            case eloc of
+                LocationAfter  _ loc -> 
+                    Seq [Var name, Loc loc]
+                LocationBefore loc _ ->
+                    Seq [Loc loc, Var name]
+    patch x = x
+
+{-----------------------------------------------------------------------------
+    Render Chart
+------------------------------------------------------------------------------}
 -- | Render a chart.
 renderChartFromExpr :: Chart.ChartEnv -> O -> [(String, DQ)] -> String
 renderChartFromExpr env o assignments

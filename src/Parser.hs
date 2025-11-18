@@ -2,6 +2,8 @@ module Parser
     ( ErrParse
     , parseOutcomeExpression
     , parseVariableAssignments
+    , ObservationLocation (..)
+    , parseObservationLocations
     ) where
 
 import DeltaQ
@@ -23,6 +25,7 @@ import Text.Megaparsec
     , anySingle
     , between
     , chunkToTokens
+    , empty
     , eof
     , manyTill
     , many
@@ -50,8 +53,40 @@ parseVariableAssignments =
     . filter (not . null)
     . lines
 
+-- | Extra parser for observation locations.
+-- Syntax:
+--
+-- > |<-- (outcome) = “location-name”
+-- > (outcome) -->| = “location-name”
+parseObservationLocations :: String -> Either ErrParse [ObservationLocation]
+parseObservationLocations = 
+    sequence . map (left show . parse observationLocationFull "")
+    . filter (not . null)
+    . lines
+
 {-----------------------------------------------------------------------------
-    Parser
+    Parse observation locations
+------------------------------------------------------------------------------}
+data ObservationLocation
+    = LocationBefore String String
+    | LocationAfter String String
+
+observationLocationFull :: Parser ObservationLocation
+observationLocationFull =
+    space *> observationLocation <* eof
+
+observationLocation :: Parser ObservationLocation
+observationLocation =
+    try (flip LocationBefore
+        <$ symbol "|<--" <*> varName <* symbol "=" <*> stringLiteral
+    )
+    <|>
+    (LocationAfter
+        <$> varName <* symbol "-->|" <* symbol "=" <*> stringLiteral
+    )
+
+{-----------------------------------------------------------------------------
+    Parse variable assignments
 ------------------------------------------------------------------------------}
 {- Note
 For the design patterns used when implementing this parser, see
@@ -133,8 +168,11 @@ blockComment =
   where
     start = C.string "{-" *> notFollowedBy (C.char '|')
 
+-- | Parser for space.
+-- NOTE: We do not use line comments, as they interfere with parsing
+-- the liter "-->|"
 space :: Parser ()
-space = L.space C.space1 lineComment blockComment
+space = L.space C.space1 empty blockComment
 
 symbol :: String -> Parser String
 symbol = L.symbol space
@@ -146,6 +184,11 @@ varName :: Parser String
 varName = L.lexeme space $ (:) <$> char <*> many char
   where
     char = C.alphaNumChar <|> satisfy (`elem` "-_^'")
+
+stringLiteral :: Parser String
+stringLiteral =
+    L.lexeme space
+        $ C.string "\"" *> manyTill anySingle (C.string "\"")
 
 rational :: Parser Rational
 rational =

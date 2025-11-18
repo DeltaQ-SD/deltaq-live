@@ -64,7 +64,11 @@ onEvalButtonClick chartEnv event = do
     varsInput  <- js_document_getElementById (toJSString "vars")
     varsString <- fromJSString <$> js_input_value varsInput
 
-    let eexpr = renderOutcomeExpression chartEnv exprString varsString
+    locInput   <- js_document_getElementById (toJSString "loc")
+    locString  <- fromJSString <$> js_input_value locInput
+
+    let eexpr =
+          renderOutcomeExpression chartEnv exprString varsString locString
     case eexpr of
         Left e -> do
             out <- js_document_getElementById (toJSString "out-error")
