@@ -7,20 +7,35 @@
     <script src="vendor/pdfkit.js"></script>
     <script src="vendor/blobstream.js"></script>
     <script src="vendor/svgtopdf.js"></script>
-    <script src="createpdf.js"></script>    <style>
-      textarea {font-family: monospace; font-size:14px;}
+    <script src="createpdf.js"></script>
+    <style>
+      textarea { font-family: monospace; font-size:14px; }
+      div.section { display:flex; }
+      div.help {margin-left:10px;}
+      div.section div { margin-bottom:0.5ex; }
+      div.section.closed label:before { content: "▸ "; }
+      div.section.closed div.help { display:none; }
+      div.section.closed textarea { display:none; }
+      div.section.open label:before { content: "▾ "; }
     </style>
+    <script>
+      function toggleOpen(id) {
+        var element = document.getElementById(id);
+        element.classList.toggle("open");
+        element.classList.toggle("closed");
+      }
+    </script>
 </head>
 
 <body>
     <h1>Try ΔQ live online</h1>
-    <div style="display:flex;">
+    <div id="div-expr" class="section open">
       <div>
-        <label for="expr">Outcome expression</label><br/>
+        <label for="expr" onclick="toggleOpen('div-expr')">Outcome expression</label><br/>
         <textarea id="expr" rows="8" cols="50">
 (x .\/. never) .>>. (y ./\. z) .>>. [end]</textarea>
       </div>
-      <div style="margin-left:10px;"><br>
+      <div class="help"><br>
         Possible combinations of outcome expressions (<code><em>expr</em></code>):
         <table>
           <tr>
@@ -44,15 +59,15 @@
         </table>
       </div>
     </div>
-    <div style="display:flex;">
+    <div id="div-vars" class="section open">
       <div>
-        <label for="vars">Variable assignments</label><br/>
+        <label for="vars" onclick="toggleOpen('div-vars')">Variable assignments</label><br/>
         <textarea id="vars" rows="5" cols="50">
 x = uniform 0 1
 y = wait 2
 z = uniform 0 3</textarea>
       </div>
-      <div style="margin-left:10px; margin-top:20px;">
+      <div class="help" style="margin-top:20px;">
         Possible variable assignments:
         <table>          
           <tr>
@@ -62,6 +77,12 @@ z = uniform 0 3</textarea>
             <td>Uniform distribution on interval:
             <td><code><em>var</em> = uniform <em>t<sub>1</sub></em> <em>t<sub>2</sub></em></code>
         </table>
+      </div>
+    </div>
+    <div id="div-loc" class="section closed">
+      <div>
+        <label for="loc" onclick="toggleOpen('div-loc')">Observation locations</label><br/>
+        <textarea id="loc" rows="8" cols="50"></textarea>
       </div>
     </div>
     <div>
