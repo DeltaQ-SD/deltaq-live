@@ -143,11 +143,9 @@ parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
 varName :: Parser String
-varName =
-    L.lexeme space
-        $ (:)
-            <$> C.lowerChar
-            <*> many (C.alphaNumChar <|> satisfy (`elem` "_^-"))
+varName = L.lexeme space $ (:) <$> char <*> many char
+  where
+    char = C.alphaNumChar <|> satisfy (`elem` "-_^'")
 
 rational :: Parser Rational
 rational =
