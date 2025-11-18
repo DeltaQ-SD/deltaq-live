@@ -84,6 +84,18 @@ z = uniform 0 3</textarea>
         <label for="loc" onclick="toggleOpen('div-loc')">Observation locations</label><br/>
         <textarea id="loc" rows="8" cols="50"></textarea>
       </div>
+      <div class="help"><br>
+        Syntax for observation locations:
+        <table>
+          <tr>
+            <td>Location before an outcome
+            <td><code>|<-- <em>expr</em> = "<em>label</em>"</code>
+          <tr>
+            <td>Location after an outcome
+            <td><code><em>expr</em> &minus;->| = "<em>label</em>"</code>
+        </table>
+      </div>
+
     </div>
     <div>
       <input type="button" id="eval" value="Render"/>
