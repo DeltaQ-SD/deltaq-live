@@ -81,10 +81,19 @@ renderTiles = frame 0.1 . position . map renderTile
         , renderToken token
         )
 
+-- | Text constrained to fit into a given width.
+--
+-- TODO: This is approximate at the moment.
+-- Use SVGFonts to fix both the font and the sizing.
+textInWidth :: Double -> String -> Diagram SVG
+textInWidth _ s
+    | length s > 4 = scale (4.5 / fromIntegral (length s)) $ text s
+    | otherwise    = text s
+
 -- | Render a single 'Token' associated with a 'Tile'.
 renderToken :: Token -> Diagram SVG
 renderToken (VarT s) =
-    scale 0.3 (text s)
+    scale 0.3 (textInWidth 1 s)
     <> (circle 0.44 & lc orange & lw 4 & fc white)
     <> hrule 1
 renderToken (Outcome OWait0) =
