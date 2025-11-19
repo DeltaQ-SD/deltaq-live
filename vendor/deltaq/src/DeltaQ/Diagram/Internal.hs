@@ -145,7 +145,8 @@ renderOp0Symbol ONever    =
     ) & lw 1.3
 renderOp0Symbol OWait0    = mempty
 renderOp0Symbol (OWait t) =
-    text $ "wait " <> printf "%.2f" (fromRational t :: Double)
+    textInWidth 1 $
+        "wait " <> printf "%.2f" (fromRational t :: Double)
 
 -- | Render the symbol that represents an operation with multiple arguments
 renderOpSymbol :: Op -> Diagram SVG
