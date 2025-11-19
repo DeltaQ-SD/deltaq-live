@@ -152,7 +152,6 @@ expr = Parser.Expr.makeExprParser atom tableOfOperators <?> "expression"
 atom :: Parser Expr
 atom =
     parens expr
-        <|> location
         <|> constants
         <|> (Wait <$ symbol "wait" <*> rational)
         <|> (Choice <$ symbol "choice" <*> rational <*> expr <*> expr)
@@ -162,12 +161,18 @@ atom =
 constants :: Parser Expr
 constants = Never <$ symbol "never" <?> "never"
 
-location :: Parser Expr
-location = Loc <$ symbol "[" <*> takeWhileP (Just "loc") (/= ']') <* symbol "]"
+location :: Parser String
+location = symbol "[" *> takeWhileP (Just "loc") (/= ']') <* symbol "]"
 
 tableOfOperators :: [[Parser.Expr.Operator Parser Expr]]
 tableOfOperators =
     [
+        [ Parser.Expr.Prefix (locationBefore <$> location)
+        ]
+    ,
+        [ Parser.Expr.Postfix (locationAfter <$> location)
+        ]
+    ,
         [ binaryR "./\\." LastToFinish
         ]
     ,
@@ -177,6 +182,9 @@ tableOfOperators =
         [ binaryR ".>>." Seq
         ]
     ]
+  where
+    locationBefore name expr = Seq (Loc name) expr
+    locationAfter  name expr = Seq expr (Loc name)
 
 binaryR :: String -> (a -> a -> a) -> Parser.Expr.Operator Parser a
 binaryR name f = Parser.Expr.InfixR (f <$ symbol name)

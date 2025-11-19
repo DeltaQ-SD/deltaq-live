@@ -32,8 +32,8 @@
     <div id="div-expr" class="section open">
       <div>
         <label for="expr" onclick="toggleOpen('div-expr')">Outcome expression</label><br/>
-        <textarea id="expr" rows="8" cols="50">
-(x .\/. never) .>>. (y ./\. z) .>>. [end]</textarea>
+        <textarea id="expr" rows="9" cols="50">
+(x .\/. never) .>>. (y ./\. z) [end]</textarea>
       </div>
       <div class="help"><br>
         Possible combinations of outcome expressions (<code><em>expr</em></code>):
@@ -54,8 +54,11 @@
             <td>Always fail:
             <td><code>never</code>
           <tr>
-            <td>Observation location:
-            <td><code>[<em>label</em>]</code>
+            <td>Observation locations:
+            <td><code>[<em>label</em>] <em>expr</em></code>
+          <tr>
+            <td>
+            <td><code><em>expr</em> [<em>label</em>]</code>
         </table>
       </div>
     </div>
@@ -85,7 +88,7 @@ z = uniform 0 3</textarea>
         <textarea id="loc" rows="8" cols="50"></textarea>
       </div>
       <div class="help"><br>
-        Syntax for observation locations:
+        Syntax for additional observation locations:
         <table>
           <tr>
             <td>Location before an outcome
