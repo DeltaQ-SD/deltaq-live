@@ -3,6 +3,9 @@ module Parser
     , Expr (..)
     , everywhere
     , parseOutcomeExpression
+    , Name (..)
+    , parseOutcomeExpressions
+    , groupIndentedLines
     , parseVariableAssignments
     , ObservationLocation (..)
     , parseObservationLocations
@@ -46,8 +49,41 @@ import Text.Megaparsec
 ------------------------------------------------------------------------------}
 type ErrParse = String
 
+-- | Parse a single outcome expression.
 parseOutcomeExpression :: String -> Either ErrParse Expr
 parseOutcomeExpression = left show . parse exprFull ""
+
+data Name = Anonymous | Name String
+    deriving (Eq, Show)
+
+-- | Parse multiple outcome expressions,
+-- which can be anonymous or named.
+-- 
+-- Example:
+--
+-- > x1 = expr…
+-- > expr
+-- > x3 = expr…
+--
+-- Expressions are recognized by indentation,
+-- there is no need for a separating character like a semicolon.
+--
+-- NOTE: The Haskell lexer treats indentation by adding `{;}`.
+-- This requires a proper lexer to distinguish tokens,
+-- not the mixture of lexing and parsing that we use here.
+parseOutcomeExpressions :: String -> Either ErrParse [(Name, Expr)]
+parseOutcomeExpressions =
+    sequence
+    . map (left show . parse exprAssignmentFull "")
+    . groupIndentedLines
+
+groupIndentedLines :: String -> [String]
+groupIndentedLines = group . filter (not . null) . lines
+  where
+    group [] = []
+    group (x:xs) = unlines (x:left) : group right
+      where
+        (left, right) = span ((' ' ==) . head) xs
 
 parseVariableAssignments :: String -> Either ErrParse [(String, DQ)]
 parseVariableAssignments =
@@ -145,6 +181,17 @@ everywhere f = every
 
 exprFull :: Parser Expr
 exprFull = space *> expr <* eof
+
+exprAssignmentFull :: Parser (Name, Expr)
+exprAssignmentFull = do
+    space
+    e <- try (named <$> varName <* symbol "=" <*> expr) 
+        <|> (anon <$> expr)
+    eof
+    pure e
+  where
+    named name e = (Name name, e)
+    anon e = (Anonymous, e)
 
 expr :: Parser Expr
 expr = Parser.Expr.makeExprParser atom tableOfOperators <?> "expression"

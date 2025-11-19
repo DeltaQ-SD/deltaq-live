@@ -1,7 +1,7 @@
-function createAndDownloadPDF() {
+function createAndDownloadPDF(container) {
   const compress = true,
-      pagewidth = parseFloat(document.getElementById("out-diagram").children[0].width.baseVal.value),
-      pageheight = parseFloat(document.getElementById("out-diagram").children[0].height.baseVal.value);
+      pagewidth = parseFloat(container.children[0].width.baseVal.value),
+      pageheight = parseFloat(container.children[0].height.baseVal.value);
   const options = {
       useCSS: false,
       assumePt: true,
@@ -10,7 +10,7 @@ function createAndDownloadPDF() {
       height: pageheight
   };
   let doc = new PDFDocument({compress: compress, size: [pagewidth, pageheight]}),
-      out = document.getElementById('out-diagram');
+      out = container;
   SVGtoPDF(doc, out.innerHTML, 0, 0, options);
   let stream = doc.pipe(blobStream());
   stream.on('finish', function() {

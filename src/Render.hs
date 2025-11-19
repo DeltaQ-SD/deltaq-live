@@ -4,6 +4,7 @@ module Render
     , Chart.loadChartEnv
     ) where
 
+import           Control.Monad (when)
 import           Data.Maybe (fromMaybe)
 import           Data.List (find, group, intersperse, sort)
 import           Data.Set (Set)
@@ -12,8 +13,10 @@ import qualified Data.Text              as Text
 import           DeltaQ
 import qualified Diagrams.Prelude       as D
 import           Parser
-    ( ObservationLocation (..)
-    , parseOutcomeExpression
+    ( Name (..)
+    , ObservationLocation (..)
+    , parseOutcomeExpressions
+    , groupIndentedLines
     , parseVariableAssignments
     , parseObservationLocations
     )
@@ -33,15 +36,34 @@ type Chart = String
 renderOutcomeExpression
     :: Chart.ChartEnv -> String -> String -> String -> Either Err (Dia, Chart)
 renderOutcomeExpression env expr vars loc = do
-    e <- parseOutcomeExpression expr
+    es <- parseOutcomeExpressions expr
+    when (null es) $ Left "Empty outcome expression"
     v <- parseVariableAssignments vars
     l <- parseObservationLocations loc
-    let o = outcomeFromExpr $ patchObservationLocations l e
-    pure (renderDiagramFromExpr o, renderChartFromExpr env o v)
+    let os =
+            [ (name, outcomeFromExpr $ patchObservationLocations l e)
+            | (name, e) <- es
+            ]
+    pure
+        ( renderDiagramFromExprs os
+        , renderChartFromExprs env os v
+        )
 
 {-----------------------------------------------------------------------------
     Render Expression
 ------------------------------------------------------------------------------}
+-- | Render a list of named diagrams.
+renderDiagramFromExprs :: [(Name, O)] -> String
+renderDiagramFromExprs = concat . map render
+  where
+    render (name, o) =
+        "<div>"
+            <> "<div>" <> mkName name <> "</div>"
+            <> "<div style='margin-left:10px;'>" <> renderDiagramFromExpr o <> "</div>"
+        <> "</div>"
+    mkName (Name name) = name <> " = "
+    mkName Anonymous   = ""
+
 -- | Render a diagram.
 renderDiagramFromExpr :: O -> String
 renderDiagramFromExpr =
@@ -78,22 +100,37 @@ outcomeFromExpr = from
 {-----------------------------------------------------------------------------
     Render Chart
 ------------------------------------------------------------------------------}
--- | Render a chart.
-renderChartFromExpr :: Chart.ChartEnv -> O -> [(String, DQ)] -> String
-renderChartFromExpr env o assignments
-    | not isOk = renderErrorHtml $ unlines $
-        (if not (Set.null missingVars) then errMissing <> [""] else [])
-        <> (if not (null duplicateVars) then errDuplicate <> [""] else [])
+-- | Render multiple named outcome expressions in a single chart.
+renderChartFromExprs
+    :: Chart.ChartEnv
+    -> [(Name, O)]
+    -> [(String, DQ)]
+    -> String
+renderChartFromExprs env outcomes assignments
+    | Left e <- allVariablesAssigned (map snd outcomes) assignments =
+        renderErrorHtml e
     | otherwise =
         Text.unpack $ D.renderSvg $ Chart.renderChart env
-        $ plotCDF "" $ toDeltaQ toDQ o
+        $ plotCDFs ""
+        $ [(mkName name, toDeltaQ toDQ o) | (name, o) <- outcomes]
   where
     toDQ v = fromMaybe (wait 0) $ lookup v assignments
+    mkName (Name name) = name
+    mkName Anonymous   = ""
 
+-- | Check whether all variables in the outcomes are assigned.
+allVariablesAssigned :: [O] -> [(String, DQ)] -> Either String ()
+allVariablesAssigned os assignments
+    | Set.null missingVars && null duplicateVars = Right ()
+    | otherwise = Left $ unlines $
+        (if not (Set.null missingVars) then errMissing <> [""] else [])
+        <> (if not (null duplicateVars) then errDuplicate <> [""] else [])
+  where
     renderVarList = concat . intersperse ", "
-    vars = map fst assignments
-    missingVars = Set.difference (variables o) (Set.fromList vars)
-    duplicateVars = duplicates vars
+    givenVars     = map fst assignments
+    neededVars    = mconcat (map variables os)
+    missingVars   = Set.difference neededVars (Set.fromList givenVars)
+    duplicateVars = duplicates givenVars
 
     isOk = Set.null missingVars && null duplicateVars
     errMissing =
