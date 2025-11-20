@@ -11,6 +11,7 @@ import           Data.Set (Set)
 import qualified Data.Set               as Set
 import qualified Data.Text              as Text
 import           DeltaQ
+import qualified Graphics.Rendering.Chart.Easy as G
 import qualified Diagrams.Prelude       as D
 import           Parser
     ( Name (..)
@@ -111,12 +112,17 @@ renderChartFromExprs env outcomes assignments
         renderErrorHtml e
     | otherwise =
         Text.unpack $ D.renderSvg $ Chart.renderChart env
-        $ plotCDFs ""
+        $ plotDQs
         $ [(mkName name, toDeltaQ toDQ o) | (name, o) <- outcomes]
   where
+    toDQ :: String -> DQ
     toDQ v = fromMaybe (wait 0) $ lookup v assignments
     mkName (Name name) = name
     mkName Anonymous   = ""
+
+    plotDQs :: [(String, DQ)] -> G.Layout Double Double
+    plotDQs [(name, dq)] = plotCDF name dq
+    plotDQs xs           = plotCDFs "" xs
 
 -- | Check whether all variables in the outcomes are assigned.
 allVariablesAssigned :: [O] -> [(String, DQ)] -> Either String ()
