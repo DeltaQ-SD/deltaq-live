@@ -221,12 +221,15 @@ tableOfOperators =
         ]
     ,
         [ binaryR "./\\." LastToFinish
+        , binaryR "&&" LastToFinish
         ]
     ,
         [ binaryR ".\\/." FirstToFinish
+        , binaryR "||" FirstToFinish
         ]
     ,
         [ binaryR ".>>." Seq
+        , binaryR ">>" Seq
         ]
     ]
   where

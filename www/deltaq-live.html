@@ -33,20 +33,20 @@
       <div>
         <label for="expr" onclick="toggleOpen('div-expr')">Outcome expression</label><br/>
         <textarea id="expr" rows="9" cols="50">
-(x .\/. never) .>>. (y ./\. z) [end]</textarea>
+(x || never) >> (y && z) [end]</textarea>
       </div>
       <div class="help"><br>
         Possible combinations of outcome expressions (<code><em>expr</em></code>):
         <table>
           <tr>
             <td>Parallel, last-to-finish
-            <td><code><em>expr</em> ./\. <em>expr</em></code>
+            <td><code><em>expr</em> && <em>expr</em></code>
           <tr>
             <td>Parallel, first-to-finish:
-            <td><code><em>expr</em> .\/. <em>expr</em></code>
+            <td><code><em>expr</em> || <em>expr</em></code>
           <tr>
             <td>Sequential composition:
-            <td><code><em>expr</em> .>>. <em>expr</em></code>
+            <td><code><em>expr</em> >> <em>expr</em></code>
           <tr>
             <td>Probabilistic choice:
             <td><code>choice <em>p</em> <em>expr</em> <em>expr</em></code>
