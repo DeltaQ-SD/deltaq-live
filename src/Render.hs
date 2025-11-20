@@ -7,12 +7,15 @@ module Render
 import           Control.Monad (when)
 import           Data.Maybe (fromMaybe)
 import           Data.List (find, group, intersperse, sort)
+import           Data.Map (Map)
+import qualified Data.Map               as Map
 import           Data.Set (Set)
 import qualified Data.Set               as Set
 import qualified Data.Text              as Text
 import           DeltaQ
 import qualified Graphics.Rendering.Chart.Easy as G
 import qualified Diagrams.Prelude       as D
+import qualified Diagrams.Backend.SVG   as D
 import           Parser
     ( Name (..)
     , ObservationLocation (..)
@@ -46,31 +49,85 @@ renderOutcomeExpression env expr vars loc = do
             | (name, e) <- es
             ]
     pure
-        ( renderDiagramFromExprs os
-        , renderChartFromExprs env os v
+        ( renderDiagramFromOutcomes os
+        , renderChartFromOutcomes env os v
         )
 
 {-----------------------------------------------------------------------------
     Render Expression
 ------------------------------------------------------------------------------}
 -- | Render a list of named diagrams.
-renderDiagramFromExprs :: [(Name, O)] -> String
-renderDiagramFromExprs = concat . map render
+renderDiagramFromOutcomes :: [(Name, O)] -> String
+renderDiagramFromOutcomes = concat . map render
   where
     render (name, o) =
         "<div>"
             <> "<div>" <> mkName name <> "</div>"
-            <> "<div style='margin-left:10px;'>" <> renderDiagramFromExpr o <> "</div>"
+            <> "<div style='margin-left:10px;'>" <>
+                renderDiagramFromOutcome o <> "</div>"
         <> "</div>"
     mkName (Name name) = name <> " = "
     mkName Anonymous   = ""
 
--- | Render a diagram.
-renderDiagramFromExpr :: O -> String
-renderDiagramFromExpr =
-    Text.unpack . D.renderSvg . D.renderDiagram
-    . D.scale 55 . renderOutcomeDiagram
+type Diagram = D.QDiagram D.SVG D.V2 Double D.Any
 
+-- | Render a diagram for an outcome expression.
+--
+-- Abbreviates variable names and adds a legend for them.
+renderDiagramFromOutcome :: O -> String
+renderDiagramFromOutcome o =
+    Text.unpack . D.renderSvg
+    $ D.renderDiagram $ D.scale 55
+    $ outcomeDia D.=== D.strutY 0.3 D.=== legendDia
+  where
+    outcomeDia = renderOutcomeDiagram o'
+    legendDia = D.scale 0.3 $ renderLegend legend
+
+    legend = everything (<>) abbreviate $ termFromOutcome o
+    o' = outcomeFromTerm $ everywhere reference $ termFromOutcome o
+
+    mkEllipsis n long =
+        let short = ellipsis n long
+        in  if long == short then Map.empty else Map.singleton long short
+
+    abbreviate (Var name) = mkEllipsis 7 name
+    abbreviate (Loc name) = mkEllipsis 10 name
+    abbreviate _ = Map.empty
+
+    reference (Var name)
+        | Just name' <- Map.lookup name legend = Var name'
+        | otherwise = Var name
+    reference (Loc name)
+        | Just name' <- Map.lookup name legend = Loc name'
+        | otherwise = Loc name
+    reference x = x
+
+-- | Replace part of the string with an ellipsis
+-- if the initial string exceeds a given number of characters.
+ellipsis :: Int -> String -> String
+ellipsis n s
+    | length s > n = take (n-2) s <> "..." <> (drop (length s - 2) s)
+    | otherwise = s
+
+-- | Render the legend for a diagram.
+renderLegend :: Map String String -> Diagram
+renderLegend xs =
+    D.translate (D.r2 (-1.5,0))
+    $ D.cat (D.r2 (0,-1)) . map renderOne $ Map.toList xs
+  where
+    renderOne :: (String, String) -> Diagram
+    renderOne (long,short) = text' $ short <> " = " <> long
+
+    -- Text with a bounding box
+    text' :: String -> Diagram
+    text' t =
+        D.alignedText 0 0.5 t
+        <> D.strutY 1.3
+        <> (D.strutX (0.6 * fromIntegral (length t)) D.# D.alignL)
+
+{-----------------------------------------------------------------------------
+    Render Observation Locations
+------------------------------------------------------------------------------}
 -- | Add the given observation locations to the outcome expression.
 patchObservationLocations :: [ObservationLocation] -> Expr.Expr -> Expr.Expr
 patchObservationLocations locs = Expr.everywhere patch
@@ -102,12 +159,12 @@ outcomeFromExpr = from
     Render Chart
 ------------------------------------------------------------------------------}
 -- | Render multiple named outcome expressions in a single chart.
-renderChartFromExprs
+renderChartFromOutcomes
     :: Chart.ChartEnv
     -> [(Name, O)]
     -> [(String, DQ)]
     -> String
-renderChartFromExprs env outcomes assignments
+renderChartFromOutcomes env outcomes assignments
     | Left e <- allVariablesAssigned (map snd outcomes) assignments =
         renderErrorHtml e
     | otherwise =
