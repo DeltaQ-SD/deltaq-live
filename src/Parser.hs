@@ -38,7 +38,7 @@ import Text.Megaparsec
     , many
     , parse
     , satisfy
-    , sepBy
+    , sepBy1
     , some
     , takeWhile1P
     , try
@@ -175,6 +175,7 @@ data Expr
     | FirstToFinish Expr Expr
     | LastToFinish Expr Expr
     | Choice Rational Expr Expr
+    | Choices [(Rational, Expr)]
     deriving (Eq, Ord, Show)
 
 -- | Apply a transformation everywhere; bottom-up.
@@ -195,6 +196,7 @@ everywhere f = every
     recurse (FirstToFinish x y) = FirstToFinish (every x) (every y)
     recurse (LastToFinish  x y) = LastToFinish (every x) (every y)
     recurse (Choice p x y) = Choice p (every x) (every y)
+    recurse (Choices wxs) = Choices [(w, every x) | (w,x) <- wxs]
 
 -- | Summarize all nodes; top-down, left-to-right.
 --
@@ -216,6 +218,8 @@ everything combine f = recurse
         f a `combine` (recurse x `combine` recurse y)
     recurse a@(Choice p x y)      =
         f a `combine` (recurse x `combine` recurse y)
+    recurse a@(Choices wxs) =
+        foldl' combine (f a) $ map (recurse . snd) wxs
 
 exprFull :: Parser Expr
 exprFull = space *> expr <* eof
@@ -239,12 +243,24 @@ atom =
     parens expr
         <|> constants
         <|> (Wait <$ symbol "wait" <*> rational)
+        <|> (Choices <$ symbol "choices" <*> choices)
         <|> (Choice <$ symbol "choice" <*> rational <*> expr <*> expr)
         <|> (Var <$> varName)
         <?> "atom"
 
 constants :: Parser Expr
 constants = Never <$ symbol "never" <?> "never"
+
+choices :: Parser [(Rational, Expr)]
+choices = symbol "[" *> sepBy1 pair (symbol ",") <* symbol "]" <?> "choices"
+  where
+    pair = do
+        _ <- symbol "("
+        w <- rational
+        _ <- symbol ","
+        e <- expr
+        _ <- symbol ")"
+        pure (w,e)
 
 location :: Parser String
 location = symbol "[" *> takeWhileP (Just "loc") (/= ']') <* symbol "]"

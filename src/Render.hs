@@ -156,6 +156,7 @@ outcomeFromExpr = from
     from (Expr.FirstToFinish x y) = from x .\/. from y
     from (Expr.LastToFinish  x y) = from x ./\. from y
     from (Expr.Choice p x y) = choice p (from x) (from y)
+    from (Expr.Choices wxs) = choices [(w,from e) | (w,e) <- wxs]
 
 {-----------------------------------------------------------------------------
     Render Chart

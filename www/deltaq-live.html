@@ -48,6 +48,9 @@
             <td>Sequential composition:
             <td><code><em>expr</em> >> <em>expr</em></code>
           <tr>
+            <td>Always fail:
+            <td><code>never</code>
+          <tr>
             <td>Probabilistic choice:
             <td><code>choice <em>p</em> <em>expr</em> <em>expr</em></code>
           <tr>
@@ -55,8 +58,11 @@
             <td>where <code><em>p</em></code> is a probability,
             <code>0 <= <em>p</em></code> and <code><em>p</em> <= 1</code>
           <tr>
-            <td>Always fail:
-            <td><code>never</code>
+            <td>&nbsp; or multiple branches:
+            <td><code>choices [(<em>w<sub>1</sub></em>,<em>expr<sub>1</sub></em>), <em>…</em>, (<em>w<sub>n</sub></em>,<em>expr<sub>n</sub></em>)]</code>
+          <tr>
+            <td>
+            <td>where <code><em>w<sub>i</sub></em></code> are weights
           <tr>
             <td>Observation locations:
             <td><code>[<em>label</em>] <em>expr</em></code>
