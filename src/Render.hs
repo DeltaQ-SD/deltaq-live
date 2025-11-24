@@ -23,6 +23,7 @@ import           Parser
     , groupIndentedLines
     , parseVariableAssignments
     , parseObservationLocations
+    , validateOutcomeExpression
     )
 import qualified Parser as Expr
 import qualified Render.Chart           as Chart
@@ -42,6 +43,7 @@ renderOutcomeExpression
 renderOutcomeExpression env expr vars loc = do
     es <- parseOutcomeExpressions expr
     when (null es) $ Left "Empty outcome expression"
+    mapM_ validateOutcomeExpression $ map snd es
     v <- parseVariableAssignments vars
     l <- parseObservationLocations loc
     let os =

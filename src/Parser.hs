@@ -2,7 +2,9 @@ module Parser
     ( ErrParse
     , Expr (..)
     , everywhere
+    , everything
     , parseOutcomeExpression
+    , validateOutcomeExpression
     , Name (..)
     , parseOutcomeExpressions
     , groupIndentedLines
@@ -52,6 +54,21 @@ type ErrParse = String
 -- | Parse a single outcome expression.
 parseOutcomeExpression :: String -> Either ErrParse Expr
 parseOutcomeExpression = left show . parse exprFull ""
+
+-- | Check whether an outcome expression is semantically valid.
+validateOutcomeExpression :: Expr -> Either ErrParse ()
+validateOutcomeExpression =
+    everything (>>) choiceHasProbability
+  where
+    choiceHasProbability (Choice p _ _)
+        | 0 <= p && p <= 1 = Right ()
+        | otherwise = Left $
+            "Error: choice " <> showDouble p <> ": " <>
+                "Number " <> showDouble p <> " is not a probability betwen 0 and 1!"
+    choiceHasProbability _ = Right ()
+
+    showDouble :: Rational -> String
+    showDouble = show . fromRational
 
 data Name = Anonymous | Name String
     deriving (Eq, Show)
@@ -178,6 +195,27 @@ everywhere f = every
     recurse (FirstToFinish x y) = FirstToFinish (every x) (every y)
     recurse (LastToFinish  x y) = LastToFinish (every x) (every y)
     recurse (Choice p x y) = Choice p (every x) (every y)
+
+-- | Summarize all nodes; top-down, left-to-right.
+--
+-- See also [Scrap your boilerplate
+-- ](https://www.microsoft.com/en-us/research/wp-content/uploads/2003/01/hmap.pdf)
+-- .
+everything :: (r -> r -> r) -> (Expr -> r) -> (Expr -> r)
+everything combine f = recurse
+  where
+    recurse a@(Var _)  = f a
+    recurse a@Never    = f a
+    recurse a@(Wait _) = f a
+    recurse a@(Loc  _) = f a
+    recurse a@(Seq x y)           =
+        f a `combine` (recurse x `combine` recurse y)
+    recurse a@(FirstToFinish x y) =
+        f a `combine` (recurse x `combine` recurse y)
+    recurse a@(LastToFinish  x y) =
+        f a `combine` (recurse x `combine` recurse y)
+    recurse a@(Choice p x y)      =
+        f a `combine` (recurse x `combine` recurse y)
 
 exprFull :: Parser Expr
 exprFull = space *> expr <* eof
