@@ -115,6 +115,8 @@ z = uniform 0 3</textarea>
       <input type="button" id="create-pdf" value="Download diagram (PDF)"
         onclick="createAndDownloadPDF(document.getElementById('out-diagram').children[0].children[1])" disabled/>
       <a style="display:none" id="pdf-file" download='outcome-diagram.pdf'></a>
+      <input type="button" id="link" value="Copy link"
+        onclick="copyLink()"/>
     </div>
     <pre id="out-error"></pre>
     Outcome diagram:
@@ -126,5 +128,31 @@ z = uniform 0 3</textarea>
       —
     </div>
     <script type="module" src="runtime.js"></script>
+    <script>
+      const queryString = window.location.search;
+      const urlParams = new URLSearchParams(queryString);
+
+      const textAreaFromURIParam = (id) => {
+        const s = urlParams.get(id);
+        if (s) { document.getElementById(id).value = decodeURIComponent(s); }
+      };
+
+      textAreaFromURIParam('expr');
+      textAreaFromURIParam('vars');
+      textAreaFromURIParam('loc');
+
+      const uriParamFromTextArea = (id) => {
+        return id + '=' + encodeURIComponent(document.getElementById(id).value);
+      }
+
+      const copyLink = () => {
+        const base = window.location.origin + window.location.pathname;
+        let query = ""
+        query = query + '?' + uriParamFromTextArea('expr');
+        query = query + '&' + uriParamFromTextArea('vars');
+        query = query + '&' + uriParamFromTextArea('loc');
+        navigator.clipboard.writeText(base + encodeURI(query));
+      };
+    </script>
 </body>
 </html>
