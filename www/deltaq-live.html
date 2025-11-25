@@ -115,8 +115,15 @@ z = uniform 0 3</textarea>
       <input type="button" id="create-pdf" value="Download diagram (PDF)"
         onclick="createAndDownloadPDF(document.getElementById('out-diagram').children[0].children[1])" disabled/>
       <a style="display:none" id="pdf-file" download='outcome-diagram.pdf'></a>
+      <span>&nbsp;&nbsp;&nbsp;</span>
       <input type="button" id="link" value="Copy link"
         onclick="copyLink()"/>
+      <input type="button" id="save" value="Save to file"
+        onclick="saveFile()"/>
+      <a style="display:none" id="save-file" download='deltaq-live.json'></a>
+      <input type="button" id="open" value="Load from file"
+        onclick="document.getElementById('open-file').click()"/>
+      <input type="file" id="open-file" accept=".json" style="display:none;">
     </div>
     <pre id="out-error"></pre>
     Outcome diagram:
@@ -128,6 +135,49 @@ z = uniform 0 3</textarea>
       —
     </div>
     <script type="module" src="runtime.js"></script>
+    <script>
+      const saveFile = () => {
+        const content = JSON.stringify ({
+          'expr': document.getElementById('expr').value,
+          'vars': document.getElementById('vars').value,
+          'loc':  document.getElementById('loc').value
+        }, null, 2);
+        const blob = new Blob([content], { type: "application/json" });
+        const a = document.getElementById('save-file');
+        a.href = URL.createObjectURL(blob);
+        a.download = "deltaq-live.json";
+        a.click();
+      }
+
+      document.getElementById("open-file").addEventListener("change", function (event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          const text = e.target.result;
+          const data = JSON.parse(text);
+
+          document.getElementById('expr').value = data['expr'];
+          document.getElementById('vars').value = data['vars'];
+          document.getElementById('loc').value = data['loc'];
+        };
+
+        reader.readAsText(file);
+      });
+
+      const openFile = () => {
+        const content = JSON.stringify ({
+          'expr': document.getElementById('expr').value,
+          'vars': document.getElementById('vars').value,
+          'loc':  document.getElementById('loc').value
+        }, null, 2);
+        const blob = new Blob([content], { type: "application/json" });
+        const a = document.getElementById('save-file');
+        a.href = URL.createObjectURL(blob);
+        a.download = "deltaq-live.json";
+        a.click();
+      }
+    </script>
     <script>
       const queryString = window.location.search;
       const urlParams = new URLSearchParams(queryString);
