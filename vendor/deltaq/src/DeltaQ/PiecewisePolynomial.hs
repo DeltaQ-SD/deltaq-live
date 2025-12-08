@@ -112,7 +112,7 @@ onDistribution2 err f (DQ mx) (DQ my) =
 --
 -- This quantity is relevant to stating and analyzing
 -- the asymptotic time complexity of operations.
-complexity :: DQ -> Int
+complexity :: DQ -> Integer
 complexity (DQ m) = sum (map complexityOfPiece pieces)
   where
     pieces = Piecewise.toAscPieces $ Measure.distribution m
