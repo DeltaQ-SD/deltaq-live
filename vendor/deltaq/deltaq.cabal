@@ -80,9 +80,9 @@ test-suite test
   build-depends:
     , base
     , deltaq
-    , hspec                   >=2.11.0 && <2.12
-    , probability-polynomial
-    , QuickCheck              >=2.14   && <2.18
+    , hspec                   >=2.11.0  && <2.12
+    , probability-polynomial  >=1.0.1.1 && <1.1
+    , QuickCheck              >=2.14    && <2.18
 
   main-is:            Spec.hs
   other-modules:
