@@ -13,7 +13,7 @@ module Parser
     , parseObservationLocations
     ) where
 
-import DeltaQ (DQ, uniform, wait)
+import DeltaQ (DQ, choice, never, uniform, wait)
 
 import Control.Arrow (left)
 import Control.Monad (void)
@@ -159,9 +159,18 @@ assignment = do
     v <- varName
     _ <- symbol "="
     dq <-
+        try waitOrUniform
+        <|> (choice
+                <$ symbol "choice"
+                <*> rational
+                <*> pNever
+                <*> parens waitOrUniform)
+    pure (v, dq)
+  where
+    pNever = never <$ symbol "never"
+    waitOrUniform =
         (uniform <$ symbol "uniform" <*> rational <*> rational)
         <|> (wait <$ symbol "wait" <*> rational)
-    pure (v, dq)
 
 {-----------------------------------------------------------------------------
     Parse expressions

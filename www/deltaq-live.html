@@ -89,6 +89,12 @@ z = uniform 0 3</textarea>
           <tr>
             <td>Uniform distribution on interval:
             <td><code><em>var</em> = uniform <em>t<sub>1</sub></em> <em>t<sub>2</sub></em></code>
+          <tr>
+            <td>Deterministic time delay that may fail:
+            <td><code><em>var</em> = choice <em>p</em> never (wait <em>t<sub>1</sub></em>)</code>
+          <tr>
+            <td>Uniform distribution on interval that may fail:
+            <td><code><em>var</em> = choice <em>p</em> never (uniform <em>t<sub>1</sub></em> <em>t<sub>2</sub></em>)</code>
         </table>
       </div>
     </div>
